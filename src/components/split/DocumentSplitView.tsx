@@ -6,6 +6,7 @@ import { VakhLiveBadge } from '../common/VakhLiveBadge';
 import { VakhConnectingState } from '../vakh/VakhConnectingState';
 import { DiscrepancyJustificationPanel } from '../audit/DiscrepancyJustificationPanel';
 import { AuditCertificateModal } from '../export/AuditCertificateModal';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 import { DeterministicCalculationEngine, type DeterministicEvaluationResult } from '../../services/deterministicEngine';
 import { vakhService } from '../../services/vakhService';
 import { 
@@ -85,26 +86,64 @@ export const DocumentSplitView: React.FC<DocumentSplitViewProps> = ({
     );
   }
 
-  const currentDoc = documents.find((d) => d.id === currentDocumentId) || documents[0];
+  const currentDoc = documents.find((d) => d.id === currentDocumentId) || documents[0] || {
+    id: 'doc-fallback',
+    filename: 'document.pdf',
+    supplier: 'Supplier',
+    extractedFields: []
+  } as any;
+
   const [highlightedFieldKey, setHighlightedFieldKey] = useState<string | null>(initialFocusedFieldKey || null);
   const [auditNotesInput, setAuditNotesInput] = useState<string>(currentDoc.auditNotes || '');
   const [isPatchingStatus, setIsPatchingStatus] = useState<boolean>(false);
   const [isCertModalOpen, setIsCertModalOpen] = useState<boolean>(false);
   const [leftTab, setLeftTab] = useState<'metrics_and_audit' | 'discrepancies'>('metrics_and_audit');
+  const [toastMessage, setToastMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   // Live Deterministic Mathematical Engine Evaluation
   const evaluation: DeterministicEvaluationResult = DeterministicCalculationEngine.evaluateDocument(currentDoc);
 
-  // Bi-directional status toggle handler: fires PATCH /api/metrics/:id to update Supabase in real-time
+  // Bi-directional status toggle handler: fires optimistic update + PATCH /api/metrics/:id to update backend in real-time
   const handleStatusToggle = async (newStatus: VakhAuditTag) => {
+    const previousStatus = currentDoc.auditStatus || 'Needs Review';
     setIsPatchingStatus(true);
+
+    // 1. Optimistic UI update immediately
+    if (onUpdateAuditStatus) {
+      onUpdateAuditStatus(currentDoc.id, newStatus, auditNotesInput);
+    }
+
     try {
+      // 2. Perform background synchronization
       await vakhService.patchRecordStatus(currentDoc.id, newStatus, auditNotesInput);
-      if (onUpdateAuditStatus) {
-        onUpdateAuditStatus(currentDoc.id, newStatus, auditNotesInput);
+
+      // Also hit the backend API route if available
+      try {
+        await fetch(`/api/metrics/${currentDoc.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: newStatus,
+            justification: auditNotesInput
+          })
+        });
+      } catch {
+        // Backend API optional/silent if using in-memory Vakh service
       }
-    } catch (err) {
-      console.error('Failed to patch Vakh record status:', err);
+
+      setToastMessage({ type: 'success', text: `Vakh status synchronized to '${newStatus}'` });
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to patch Vakh record status, reverting:', err);
+      // 3. Rollback on failure
+      if (onUpdateAuditStatus) {
+        onUpdateAuditStatus(currentDoc.id, previousStatus, auditNotesInput);
+      }
+      setToastMessage({ 
+        type: 'error', 
+        text: `Network sync failed: Reverted status to '${previousStatus}'. (${err?.message || 'Error'})` 
+      });
+      setTimeout(() => setToastMessage(null), 4000);
     } finally {
       setIsPatchingStatus(false);
     }
@@ -119,7 +158,22 @@ export const DocumentSplitView: React.FC<DocumentSplitViewProps> = ({
   };
 
   return (
-    <div className="pt-4 flex flex-col h-[calc(100vh-80px)] min-h-[680px] space-y-3">
+    <div className="pt-4 flex flex-col h-[calc(100vh-80px)] min-h-[680px] space-y-3 relative">
+      {/* Toast Notification Alert */}
+      {toastMessage && (
+        <div className={`fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-lg border shadow-2xl flex items-center gap-2 text-xs font-mono font-semibold transition-all animate-in fade-in slide-in-from-bottom-2 ${
+          toastMessage.type === 'error'
+            ? 'bg-red-950/90 text-red-300 border-red-500/50'
+            : 'bg-emerald-950/90 text-emerald-300 border-emerald-500/50'
+        }`}>
+          {toastMessage.type === 'error' ? (
+            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          )}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
       {/* 3D Cyber Sub-header with document switcher, Vakh Live Badge, Bi-Directional Tags & Export Action */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--surface)] px-4 py-2.5 border border-[var(--border-subtle)] rounded-xl backdrop-blur-md shadow-lg">
         {/* Left: Navigation and Document Select */}
@@ -254,36 +308,40 @@ export const DocumentSplitView: React.FC<DocumentSplitViewProps> = ({
           </div>
 
           <div className="flex-1 overflow-hidden">
-            {leftTab === 'metrics_and_audit' ? (
-              <ExtractionPanel
-                document={currentDoc}
-                highlightedFieldKey={highlightedFieldKey}
-                onHoverField={(fieldKey) => setHighlightedFieldKey(fieldKey)}
-                onSelectField={(fieldKey) => setHighlightedFieldKey(fieldKey)}
-                onConfirmField={(fieldId) => onConfirmField(currentDoc.id, fieldId)}
-                onEditField={(fieldId, val, notes) => onEditField(currentDoc.id, fieldId, val, notes)}
-                onRejectField={(fieldId) => onRejectField(currentDoc.id, fieldId)}
-                onRunCalculation={onRunCalculation}
-              />
-            ) : (
-              <div className="h-full overflow-y-auto p-4 space-y-4">
-                <DiscrepancyJustificationPanel
+            <ErrorBoundary fallbackTitle="Audit Verification Panel Error">
+              {leftTab === 'metrics_and_audit' ? (
+                <ExtractionPanel
                   document={currentDoc}
-                  discrepancies={evaluation.discrepancies}
-                  onUpdateStatus={(status, note) => handleStatusToggle(status)}
+                  highlightedFieldKey={highlightedFieldKey}
+                  onHoverField={(fieldKey) => setHighlightedFieldKey(fieldKey)}
+                  onSelectField={(fieldKey) => setHighlightedFieldKey(fieldKey)}
+                  onConfirmField={(fieldId) => onConfirmField(currentDoc.id, fieldId)}
+                  onEditField={(fieldId, val, notes) => onEditField(currentDoc.id, fieldId, val, notes)}
+                  onRejectField={(fieldId) => onRejectField(currentDoc.id, fieldId)}
+                  onRunCalculation={onRunCalculation}
                 />
-              </div>
-            )}
+              ) : (
+                <div className="h-full overflow-y-auto p-4 space-y-4">
+                  <DiscrepancyJustificationPanel
+                    document={currentDoc}
+                    discrepancies={evaluation.discrepancies}
+                    onUpdateStatus={(status, note) => handleStatusToggle(status)}
+                  />
+                </div>
+              )}
+            </ErrorBoundary>
           </div>
         </div>
 
         {/* RIGHT PANE: Embedded PDF Viewer with Interactive Glowing Neon Coordinate Overlays (7 cols on lg) */}
         <div className="lg:col-span-7 h-full overflow-hidden rounded-xl border border-[var(--border-subtle)] shadow-xl bg-[var(--surface)]">
-          <DocumentViewer
-            document={currentDoc}
-            highlightedFieldKey={highlightedFieldKey}
-            onSelectField={(fieldKey) => setHighlightedFieldKey(fieldKey)}
-          />
+          <ErrorBoundary fallbackTitle="Document OCR Viewer Error">
+            <DocumentViewer
+              document={currentDoc}
+              highlightedFieldKey={highlightedFieldKey}
+              onSelectField={(fieldKey) => setHighlightedFieldKey(fieldKey)}
+            />
+          </ErrorBoundary>
         </div>
       </div>
 
