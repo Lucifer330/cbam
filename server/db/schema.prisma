@@ -1,0 +1,124 @@
+// ==============================================================================
+// Prisma Schema for CBAM-AuditTrace
+// Single Source of Truth for EU Regulation (EU) 2023/956 & Vakh Data Engine
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuditStatus {
+  Verified
+  Discrepancy
+  Needs_Review @map("Needs Review")
+}
+
+enum ComplianceStatus {
+  Needs_verification @map("Needs verification")
+  Verified
+  Calculated
+  Flagged_anomaly    @map("Flagged anomaly")
+  Archived
+}
+
+enum GoodsCategory {
+  Iron_Steel   @map("Iron & Steel")
+  Aluminium
+  Cement
+  Fertilizers
+  Hydrogen
+  Electricity
+}
+
+enum DocumentType {
+  Invoice
+  EPD
+  Emissions_statement @map("Emissions statement")
+  Mill_test_cert      @map("Mill test cert")
+}
+
+model CbamDataSpace {
+  id                  String               @id @default(uuid())
+  vakhBoardId         String               @map("vakh_board_id")
+  spaceName           String               @default("Craftora EU CBAM Compliance Space") @map("space_name")
+  boardName           String               @default("Customs Evidence & Supplier Declarations Board") @map("board_name")
+  supplierName        String               @map("supplier_name")
+  supplierCountry     String               @map("supplier_country")
+  importerName        String               @map("importer_name")
+  productName         String               @map("product_name")
+  cnCode              String               @map("cn_code")
+  goodsCategory       GoodsCategory        @default(Iron_Steel) @map("goods_category")
+  documentType        DocumentType         @default(Invoice) @map("document_type")
+  installationName    String               @map("installation_name")
+  installationCountry String               @map("installation_country")
+  productionRoute     String               @map("production_route")
+  traceabilityPercent Int                  @default(75) @map("traceability_percent")
+  overallStatus       AuditStatus          @default(Needs_Review) @map("overall_status")
+  sha256Hash          String               @map("sha256_hash")
+  pdfSourceUrl        String               @default("https://vakh.com/assets/evidence/supplier_invoice_042.pdf") @map("pdf_source_url")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  metrics             CbamAuditMetric[]
+  calculationTraces   CbamCalculationTrace[]
+
+  @@map("cbam_data_spaces")
+  @@index([vakhBoardId])
+  @@index([overallStatus])
+}
+
+model CbamAuditMetric {
+  id                   String        @id @default(uuid())
+  spaceId              String        @map("space_id")
+  metricKey            String        @map("metric_key")
+  metricName           String        @map("metric_name")
+  metricValue          String        @map("metric_value")
+  numericValue         Float?        @map("numeric_value")
+  unit                 String        @default("tCO₂e/t")
+  confidence           Float         @default(0.95)
+  status               AuditStatus   @default(Needs_Review)
+  justification        String?
+  pdfSourceUrl         String?       @map("pdf_source_url")
+  highlightCoordinates Json          @map("highlight_coordinates")
+  verifiedBy           String?       @map("verified_by")
+  verifiedAt           DateTime?     @map("verified_at")
+  vakhPropertyId       String?       @map("vakh_property_id")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  space                CbamDataSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@map("cbam_audit_metrics")
+  @@index([spaceId])
+  @@index([status])
+}
+
+model CbamCalculationTrace {
+  id                       String        @id @default(uuid())
+  spaceId                  String        @map("space_id")
+  ruleVersion              String        @default("v2026.1") @map("rule_version")
+  ruleClause               String        @default("Implementing Regulation (EU) 2023/1773 Annex III Sec. 3.1") @map("rule_clause")
+  formulaExpression        String        @map("formula_expression")
+  formulaDisplay           String        @map("formula_display")
+  netMassTonnes            Float         @map("net_mass_tonnes")
+  directEmissionsTonnes    Float         @map("direct_emissions_tonnes")
+  indirectEmissionsTonnes  Float         @map("indirect_emissions_tonnes")
+  totalEmbeddedTonnes      Float         @map("total_embedded_tonnes")
+  carbonPriceDeductionEur  Float         @default(0) @map("carbon_price_deduction_eur")
+  complianceRating         String        @map("compliance_rating")
+  euSectorBenchmark        Float         @map("eu_sector_benchmark")
+  benchmarkDeviationPercent Float        @map("benchmark_deviation_percent")
+  merkleRootHash           String        @map("merkle_root_hash")
+  complianceOfficer        String        @default("E. Moreau (Lead CBAM Officer)") @map("compliance_officer")
+  createdAt                DateTime      @default(now()) @map("created_at")
+
+  space                    CbamDataSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@map("cbam_calculation_traces")
+  @@index([spaceId])
+}
