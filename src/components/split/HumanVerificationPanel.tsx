@@ -14,7 +14,7 @@ import {
   Sparkles
 } from 'lucide-react';
 
-interface ExtractionPanelProps {
+export interface HumanVerificationPanelProps {
   document: CBAMDocument;
   highlightedFieldKey?: string | null;
   onHoverField?: (fieldKey: string | null) => void;
@@ -25,7 +25,7 @@ interface ExtractionPanelProps {
   onRunCalculation: (documentId: string) => void;
 }
 
-export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
+export const HumanVerificationPanel: React.FC<HumanVerificationPanelProps> = ({
   document,
   highlightedFieldKey,
   onHoverField,
@@ -57,25 +57,25 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#ffffff] border border-[#e2e2dc] rounded-[6px] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#ffffff] dark:bg-slate-950 border border-[#e2e2dc] dark:border-slate-800 rounded-[6px] overflow-hidden">
       {/* Panel Header */}
-      <div className="px-5 py-3.5 bg-[#fbfbfa] border-b border-[#e5e5de] flex items-center justify-between">
+      <div className="px-5 py-3.5 bg-[#fbfbfa] dark:bg-slate-900/80 border-b border-[#e5e5de] dark:border-slate-800 flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-[#191c1e] tracking-tight">
+          <h2 className="text-sm font-semibold text-[#191c1e] dark:text-slate-100 tracking-tight">
             Extracted Fields & Verification
           </h2>
-          <p className="text-xs text-[#5a6065]">
+          <p className="text-xs text-[#5a6065] dark:text-slate-400">
             Evidence for {document.productName} ({document.cnCode})
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-[#5a6065]">
+          <span className="text-xs font-mono text-[#5a6065] dark:text-slate-400">
             {confirmedCount}/{totalCount} Confirmed
           </span>
-          <div className="w-16 h-1.5 bg-[#ecece6] rounded-full overflow-hidden">
+          <div className="w-16 h-1.5 bg-[#ecece6] dark:bg-slate-800 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-[#1b6830] transition-all duration-300"
+              className="h-full bg-[#1b6830] dark:bg-emerald-500 transition-all duration-300"
               style={{ width: `${(confirmedCount / totalCount) * 100}%` }}
             />
           </div>
@@ -83,10 +83,10 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
       </div>
 
       {/* Mandatory Non-Autonomous Notice Banner */}
-      <div className="p-3.5 bg-[#fef8eb] border-b border-[#f8dfaa] flex items-start gap-2.5 text-xs text-[#9e5d03]">
-        <ShieldAlert className="w-4 h-4 text-[#b46908] shrink-0 mt-0.5" />
+      <div className="p-3.5 bg-[#fef8eb] dark:bg-amber-950/30 border-b border-[#f8dfaa] dark:border-amber-800/40 flex items-start gap-2.5 text-xs text-[#9e5d03] dark:text-amber-300">
+        <ShieldAlert className="w-4 h-4 text-[#b46908] dark:text-amber-400 shrink-0 mt-0.5" />
         <div className="leading-relaxed">
-          <span className="font-semibold text-[#804b02]">AI proposed these candidate values. </span>
+          <span className="font-semibold text-[#804b02] dark:text-amber-200">AI proposed these candidate values. </span>
           Human verification is strictly required by the compliance gatekeeper before the deterministic rules engine can calculate embedded emissions.
         </div>
       </div>
@@ -114,7 +114,7 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-semibold text-[#191c1e] dark:text-[#f1f5f9]">{field.label}</span>
                     {field.lowConfidenceFlag && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] text-[#a82323] bg-[#fdf2f2] px-1.5 py-0.2 rounded border border-[#f7cece]">
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-[#a82323] bg-[#fdf2f2] dark:bg-red-950/40 dark:text-red-400 px-1.5 py-0.2 rounded border border-[#f7cece] dark:border-red-900/40">
                         <AlertTriangle className="w-2.5 h-2.5" />
                         Low Confidence
                       </span>
@@ -268,3 +268,5 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
     </div>
   );
 };
+
+export { HumanVerificationPanel as ExtractionPanel };

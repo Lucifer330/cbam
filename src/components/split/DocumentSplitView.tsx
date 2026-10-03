@@ -119,7 +119,7 @@ export const DocumentSplitView: React.FC<DocumentSplitViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[640px] space-y-3">
+    <div className="pt-4 flex flex-col h-[calc(100vh-80px)] min-h-[680px] space-y-3">
       {/* 3D Cyber Sub-header with document switcher, Vakh Live Badge, Bi-Directional Tags & Export Action */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--surface)] px-4 py-2.5 border border-[var(--border-subtle)] rounded-xl backdrop-blur-md shadow-lg">
         {/* Left: Navigation and Document Select */}

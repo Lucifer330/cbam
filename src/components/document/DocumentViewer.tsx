@@ -261,7 +261,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
           {/* INTERACTIVE BOUNDING BOX OVERLAYS (Extracted directly from Vakh Item Schema Properties) */}
           {showOverlays && (
-            <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 pointer-events-none overflow-visible">
               {document.extractedFields.map((field) => {
                 const isSelected = highlightedFieldKey === field.fieldKey;
                 // Direct provenance coordinates extracted from Vakh Schema properties
@@ -270,6 +270,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                 const width = field.highlightBox?.width ?? field.boundingBox.width;
                 const height = field.highlightBox?.height ?? field.boundingBox.height;
                 const pageNum = field.pdfPage ?? field.boundingBox.page ?? 1;
+                const confidencePct = Math.round(field.confidence * 100);
 
                 return (
                   <div
@@ -281,21 +282,40 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     style={{
                       top: `${top}px`,
                       left: `${left}px`,
-                      width: `${width}px`,
-                      height: `${height}px`,
+                      width: `${Math.max(width, 60)}px`,
+                      height: `${Math.max(height, 22)}px`,
                     }}
-                    className={`absolute pointer-events-auto cursor-pointer rounded-[4px] transition-all flex items-center justify-between px-2 text-[10px] font-mono select-none ${
+                    className={`absolute pointer-events-auto cursor-pointer rounded transition-all duration-150 select-none ${
                       isSelected
-                        ? 'source-highlight-active bg-[var(--cyber-cyan)]/25 border-2 border-[var(--cyber-cyan)] text-black z-30 shadow-lg shadow-[var(--cyber-cyan)]/40 ring-4 ring-[var(--cyber-cyan)]/20 animate-pulse'
-                        : 'bg-[#3d5042]/15 border border-[#3d5042]/60 hover:bg-[var(--cyber-cyan)]/20 hover:border-[var(--cyber-cyan)] text-[#191c1e] z-10'
+                        ? 'z-20 opacity-100 bg-[#38bdf8]/20 border-2 border-[#38bdf8] shadow-[0_0_15px_rgba(56,189,248,0.45)] ring-4 ring-[#38bdf8]/30 animate-pulse'
+                        : 'z-10 opacity-60 hover:opacity-100 bg-emerald-500/10 border border-emerald-500/60 hover:bg-[#38bdf8]/20 hover:border-[#38bdf8]'
                     }`}
                     title={`Vakh Provenance: Page ${pageNum} · Top=${top}px, Left=${left}px, W=${width}px, H=${height}px (${field.label}: ${field.value})`}
                   >
-                    <span className="truncate font-semibold">{field.label}</span>
-                    <div className="flex items-center gap-1 shrink-0 ml-1">
-                      <span className="text-[9px] bg-white/90 px-1 py-0.2 rounded border border-black/20 font-bold">
-                        {Math.round(field.confidence * 100)}%
+                    {/* Floating Provenance Coordinate Tooltip Badge (Positioned Above Bounding Box with translateY(-100%) to eliminate text collision) */}
+                    <div 
+                      className={`absolute top-0 left-0 -mt-1 pointer-events-none whitespace-nowrap flex items-center gap-1.5 px-2 py-0.5 rounded shadow-lg text-[10px] font-mono font-bold transition-all duration-150 ${
+                        isSelected
+                          ? 'bg-[#030712] text-[#38bdf8] border border-[#38bdf8] shadow-[#38bdf8]/30 z-20 scale-105'
+                          : 'bg-[#030712]/95 text-emerald-400 border border-emerald-500/40 z-10'
+                      }`}
+                      style={{
+                        transform: 'translateY(-100%)',
+                      }}
+                    >
+                      <span className="truncate max-w-[150px]">{field.label}</span>
+                      <span className={`px-1 py-0.2 rounded text-[9px] font-extrabold ${
+                        isSelected 
+                          ? 'bg-[#38bdf8] text-black' 
+                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      }`}>
+                        {confidencePct}%
                       </span>
+                    </div>
+
+                    {/* Subtle corner indicator inside bounding box */}
+                    <div className="w-full h-full flex items-center justify-end pr-1 text-[9px] font-mono text-[#0284c7] font-semibold opacity-80 pointer-events-none">
+                      {field.unit ? `${field.numericValue ?? ''} ${field.unit}` : ''}
                     </div>
                   </div>
                 );

@@ -106,20 +106,23 @@ export const AppShell: React.FC<AppShellProps> = ({
       </div>
 
       {/* Main 3D Holographic Header */}
-      <header className="bg-[#0c1219]/90 border-b border-[#1e293b] px-6 py-4 sticky top-0 z-30 shadow-2xl backdrop-blur-xl">
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-slate-950/90 border-b border-slate-800 px-6 py-3.5 shadow-2xl">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
           {/* Brand & Tagline with 3D Shield */}
-          <div className="flex items-center gap-3.5">
+          <div className="flex flex-wrap items-center gap-3.5">
             <div className="w-9 h-9 rounded-[8px] bg-gradient-to-br from-[#10b981] via-[#059669] to-[#047857] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.4)] border border-[#34d399]/40">
               <ShieldCheck className="w-5 h-5 text-white filter drop-shadow-sm" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-lg font-black tracking-tight text-white uppercase font-sans flex items-center gap-1.5">
                   CBAM-AuditTrace
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-[4px] bg-[#10b981]/20 text-[#34d399] border border-[#10b981]/40 shadow-xs">
                     3D HUD
                   </span>
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono text-purple-300 bg-purple-950/60 border border-purple-500/30 px-2 py-0.5 rounded-full">
+                  Craftora Hackathon · Build with Vakh Track
                 </span>
               </div>
               <p className="text-[11px] text-[#94a3b8] font-mono">
@@ -129,7 +132,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           </div>
 
           {/* Top-Right: 3D Mode Switcher, Vakh Portal, Upload, Workspace & Profile */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             {/* 3D Theme Mode Toggle (Cyber vs Studio) */}
             <button
               type="button"
@@ -150,25 +153,25 @@ export const AppShell: React.FC<AppShellProps> = ({
               )}
             </button>
 
-              {/* Vakh Live Sync Badge */}
-              <VakhLiveBadge />
+            {/* Vakh Live Sync Badge */}
+            <VakhLiveBadge />
 
-              {/* Vakh Supplier Portal Button */}
-              <button
-                type="button"
-                onClick={() => onTabChange('vakh-portal')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-mono font-bold transition-all cursor-pointer ${
-                  activeTab === 'vakh-portal'
-                    ? 'bg-[#10b981] text-[#022c22] shadow-[0_0_12px_rgba(16,185,129,0.5)]'
-                    : 'bg-[#1e293b]/70 text-[#cbd5e1] hover:bg-[#334155] border border-[#334155]'
-                }`}
-              >
-                <Globe className="w-3.5 h-3.5 text-[#34d399]" />
-                <span className="hidden sm:inline">Supplier Portal</span>
-                <span className="text-[9px] px-1 py-0.2 rounded font-mono font-bold bg-[#022c22] text-[#34d399] border border-[#10b981]/40">
-                  VAKH
-                </span>
-              </button>
+            {/* Vakh Supplier Portal Button */}
+            <button
+              type="button"
+              onClick={() => onTabChange('vakh-portal')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-mono font-bold transition-all cursor-pointer ${
+                activeTab === 'vakh-portal'
+                  ? 'bg-[#10b981] text-[#022c22] shadow-[0_0_12px_rgba(16,185,129,0.5)]'
+                  : 'bg-[#1e293b]/70 text-[#cbd5e1] hover:bg-[#334155] border border-[#334155]'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5 text-[#34d399]" />
+              <span className="hidden sm:inline">Supplier Portal</span>
+              <span className="text-[9px] px-1 py-0.2 rounded font-mono font-bold bg-[#022c22] text-[#34d399] border border-[#10b981]/40">
+                VAKH
+              </span>
+            </button>
 
             {/* Quick Upload Action */}
             <button
