@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Zap, RotateCw } from 'lucide-react';
+import earthTexture from '../../assets/earth_globe.jpg';
 
 interface TradeNode {
   name: string;
@@ -22,14 +23,24 @@ const TRADE_NODES: TradeNode[] = [
 
 export const Globe3D: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rotationRef = useRef<{ x: number; y: number }>({ x: 0.3, y: 1.8 });
+  const rotationRef = useRef<{ x: number; y: number }>({ x: 0.2, y: 0.0 });
   const autoRotateRef = useRef(true);
   const selectedNodeRef = useRef<TradeNode>(TRADE_NODES[0]);
+  const earthImgRef = useRef<HTMLImageElement | null>(null);
 
   const [selectedNode, setSelectedNode] = useState<TradeNode>(TRADE_NODES[0]);
   const [autoRotate, setAutoRotate] = useState(true);
   const isDraggingRef = useRef(false);
   const lastMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Preload realistic Earth image texture
+  useEffect(() => {
+    const img = new Image();
+    img.src = earthTexture;
+    img.onload = () => {
+      earthImgRef.current = img;
+    };
+  }, []);
 
   // Sync state to refs for high-fps canvas animation
   useEffect(() => {
@@ -53,7 +64,7 @@ export const Globe3D: React.FC = () => {
     const deltaY = (e.clientY - lastMouseRef.current.y) * 0.006;
 
     rotationRef.current = {
-      x: Math.max(-1.4, Math.min(1.4, rotationRef.current.x + deltaY)),
+      x: Math.max(-1.2, Math.min(1.2, rotationRef.current.x + deltaY)),
       y: rotationRef.current.y + deltaX,
     };
     lastMouseRef.current = { x: e.clientX, y: e.clientY };
@@ -83,45 +94,123 @@ export const Globe3D: React.FC = () => {
 
       // Smooth auto rotation
       if (autoRotateRef.current) {
-        rotationRef.current.y += 0.0025;
+        rotationRef.current.y += 0.003;
       }
 
       particleOffset = (particleOffset + 0.012) % 1;
       const currentRot = rotationRef.current;
 
-      // 1. Atmosphere Radial Glow
-      const glowGrad = ctx.createRadialGradient(centerX, centerY, radius * 0.7, centerX, centerY, radius * 1.35);
-      glowGrad.addColorStop(0, 'rgba(16, 185, 129, 0.09)');
-      glowGrad.addColorStop(0.5, 'rgba(6, 182, 212, 0.04)');
-      glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = glowGrad;
+      // 1. Atmosphere Radial Outer Glow
+      const atmosphereGlow = ctx.createRadialGradient(
+        centerX, 
+        centerY, 
+        radius * 0.95, 
+        centerX, 
+        centerY, 
+        radius * 1.3
+      );
+      atmosphereGlow.addColorStop(0, 'rgba(56, 189, 248, 0.45)');
+      atmosphereGlow.addColorStop(0.3, 'rgba(14, 165, 233, 0.22)');
+      atmosphereGlow.addColorStop(0.7, 'rgba(2, 132, 199, 0.08)');
+      atmosphereGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = atmosphereGlow;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, radius * 1.35, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, radius * 1.3, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. Base 3D Sphere Surface
-      const sphereGrad = ctx.createRadialGradient(
-        centerX - radius * 0.35,
-        centerY - radius * 0.35,
-        radius * 0.1,
-        centerX,
-        centerY,
-        radius
-      );
-      sphereGrad.addColorStop(0, '#111926');
-      sphereGrad.addColorStop(0.5, '#090d14');
-      sphereGrad.addColorStop(1, '#030508');
-      ctx.fillStyle = sphereGrad;
+      // 2. Render Realistic Earth Surface (Image with 3D Spherical Shading & Rotation)
+      ctx.save();
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.clip();
 
-      // Outer rim
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+      if (earthImgRef.current && earthImgRef.current.complete) {
+        // Compute horizontal rotational pan for the realistic Earth texture
+        const earthImg = earthImgRef.current;
+        const imgSize = radius * 2;
+        
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(currentRot.x * 0.2); // subtle tilt
+        
+        // Draw the photorealistic Earth globe
+        ctx.drawImage(
+          earthImg,
+          -radius,
+          -radius,
+          imgSize,
+          imgSize
+        );
+        ctx.restore();
+
+        // Overlay 3D Spherical Lighting & Terminator Shadow
+        const lightGrad = ctx.createRadialGradient(
+          centerX - radius * 0.35,
+          centerY - radius * 0.35,
+          radius * 0.15,
+          centerX + radius * 0.2,
+          centerY + radius * 0.2,
+          radius * 1.05
+        );
+        lightGrad.addColorStop(0, 'rgba(255, 255, 255, 0.15)'); // sun highlight
+        lightGrad.addColorStop(0.45, 'rgba(0, 0, 0, 0)');
+        lightGrad.addColorStop(0.75, 'rgba(2, 6, 23, 0.4)');
+        lightGrad.addColorStop(1, 'rgba(2, 6, 23, 0.85)'); // night shadow
+
+        ctx.fillStyle = lightGrad;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner blue atmospheric limb ring
+        const innerAtmosphere = ctx.createRadialGradient(
+          centerX,
+          centerY,
+          radius * 0.82,
+          centerX,
+          centerY,
+          radius
+        );
+        innerAtmosphere.addColorStop(0, 'rgba(56, 189, 248, 0)');
+        innerAtmosphere.addColorStop(0.8, 'rgba(56, 189, 248, 0.2)');
+        innerAtmosphere.addColorStop(1, 'rgba(56, 189, 248, 0.55)');
+        ctx.fillStyle = innerAtmosphere;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Fallback procedural planet sphere if image loading
+        const sphereGrad = ctx.createRadialGradient(
+          centerX - radius * 0.35,
+          centerY - radius * 0.35,
+          radius * 0.1,
+          centerX,
+          centerY,
+          radius
+        );
+        sphereGrad.addColorStop(0, '#0284c7');
+        sphereGrad.addColorStop(0.4, '#0369a1');
+        sphereGrad.addColorStop(0.8, '#0f172a');
+        sphereGrad.addColorStop(1, '#020617');
+        ctx.fillStyle = sphereGrad;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // Outer Glowing Limb Border
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
       ctx.lineWidth = 1.5;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 8;
       ctx.stroke();
+      ctx.shadowBlur = 0;
 
-      // 3. 3D Coordinate Mapping Helper
+      // 3. 3D Coordinate Mapping Projection
       const project = (latDeg: number, lngDeg: number) => {
         const phi = (90 - latDeg) * (Math.PI / 180);
         const theta = (lngDeg + 180) * (Math.PI / 180) + currentRot.y;
@@ -143,37 +232,15 @@ export const Globe3D: React.FC = () => {
         };
       };
 
-      // 4. Draw 3D Latitude & Longitude Wireframe Grid
-      ctx.lineWidth = 0.8;
-      // Latitudes
+      // 4. Subtle Latitude & Longitude Telemetry Grid
+      ctx.lineWidth = 0.6;
       for (let lat = -60; lat <= 60; lat += 30) {
         ctx.beginPath();
         let first = true;
         for (let lng = -180; lng <= 180; lng += 10) {
           const pt = project(lat, lng);
           if (pt.visible) {
-            ctx.strokeStyle = `rgba(52, 211, 153, ${Math.max(0.04, pt.depth * 0.15)})`;
-            if (first) {
-              ctx.moveTo(pt.x, pt.y);
-              first = false;
-            } else {
-              ctx.lineTo(pt.x, pt.y);
-            }
-          } else {
-            first = true;
-          }
-        }
-        ctx.stroke();
-      }
-
-      // Longitudes
-      for (let lng = -180; lng < 180; lng += 45) {
-        ctx.beginPath();
-        let first = true;
-        for (let lat = -80; lat <= 80; lat += 8) {
-          const pt = project(lat, lng);
-          if (pt.visible) {
-            ctx.strokeStyle = `rgba(56, 189, 248, ${Math.max(0.04, pt.depth * 0.15)})`;
+            ctx.strokeStyle = `rgba(56, 189, 248, ${Math.max(0.03, pt.depth * 0.12)})`;
             if (first) {
               ctx.moveTo(pt.x, pt.y);
               first = false;
@@ -198,54 +265,63 @@ export const Globe3D: React.FC = () => {
           const midY = Math.min(supPt.y, euPt.y) - radius * 0.28;
 
           ctx.beginPath();
-          ctx.strokeStyle = `${supplier.color}40`;
-          ctx.lineWidth = 1.2;
+          ctx.strokeStyle = `${supplier.color}50`;
+          ctx.lineWidth = 1.4;
           ctx.setLineDash([4, 4]);
           ctx.moveTo(supPt.x, supPt.y);
           ctx.quadraticCurveTo(midX, midY, euPt.x, euPt.y);
           ctx.stroke();
           ctx.setLineDash([]);
 
-          // Animated particle
+          // Animated moving telemetry particle
           const t = (particleOffset + supplier.emissions * 0.2) % 1;
           const px = (1 - t) * (1 - t) * supPt.x + 2 * (1 - t) * t * midX + t * t * euPt.x;
           const py = (1 - t) * (1 - t) * supPt.y + 2 * (1 - t) * t * midY + t * t * euPt.y;
 
           ctx.beginPath();
-          ctx.arc(px, py, 3, 0, Math.PI * 2);
+          ctx.arc(px, py, 3.5, 0, Math.PI * 2);
           ctx.fillStyle = supplier.color;
           ctx.shadowColor = supplier.color;
-          ctx.shadowBlur = 8;
+          ctx.shadowBlur = 10;
           ctx.fill();
           ctx.shadowBlur = 0;
         }
       });
 
-      // 6. Draw Interactive Trading Nodes
+      // 6. Draw Interactive Trading Nodes & Pulsing Badges
       TRADE_NODES.forEach((node) => {
         const pt = project(node.lat, node.lng);
         if (pt.visible) {
           const isSelected = selectedNodeRef.current.name === node.name;
-          const nodeRadius = isSelected ? 6.5 : 4.5;
+          const nodeRadius = isSelected ? 7 : 5;
 
+          // Pulsing outer ring
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, nodeRadius * 2, 0, Math.PI * 2);
-          ctx.strokeStyle = `${node.color}50`;
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = `${node.color}60`;
+          ctx.lineWidth = 1.2;
           ctx.stroke();
 
+          // Node center dot
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, nodeRadius, 0, Math.PI * 2);
           ctx.fillStyle = node.color;
           ctx.shadowColor = node.color;
-          ctx.shadowBlur = 12;
+          ctx.shadowBlur = 14;
           ctx.fill();
           ctx.shadowBlur = 0;
 
-          if (isSelected || pt.depth > 0.4) {
-            ctx.font = '10px "JetBrains Mono", monospace';
-            ctx.fillStyle = isSelected ? '#ffffff' : '#94a3b8';
+          // Label
+          if (isSelected || pt.depth > 0.35) {
+            ctx.font = 'bold 11px "JetBrains Mono", monospace';
+            ctx.fillStyle = '#030712';
+            // Text shadow background
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(`${node.country}`, pt.x + 9, pt.y - 3);
+            ctx.fillStyle = isSelected ? '#38bdf8' : '#ffffff';
             ctx.fillText(`${node.country}`, pt.x + 8, pt.y - 4);
+            ctx.shadowBlur = 0;
           }
         }
       });
