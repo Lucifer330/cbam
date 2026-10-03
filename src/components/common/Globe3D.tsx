@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Zap, RotateCw } from 'lucide-react';
-import earthTexture from '../../assets/earth_globe.jpg';
+import earthMapTexture from '../../assets/earth_map.jpg';
 
 interface TradeNode {
   name: string;
@@ -33,16 +33,16 @@ export const Globe3D: React.FC = () => {
   const isDraggingRef = useRef(false);
   const lastMouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Preload realistic Earth image texture
+  // Preload realistic equirectangular Earth map
   useEffect(() => {
     const img = new Image();
-    img.src = earthTexture;
+    img.src = earthMapTexture;
     img.onload = () => {
       earthImgRef.current = img;
     };
   }, []);
 
-  // Sync state to refs for high-fps canvas animation
+  // Sync state to refs for 60fps canvas loop
   useEffect(() => {
     autoRotateRef.current = autoRotate;
   }, [autoRotate]);
@@ -60,8 +60,8 @@ export const Globe3D: React.FC = () => {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDraggingRef.current) return;
-    const deltaX = (e.clientX - lastMouseRef.current.x) * 0.006;
-    const deltaY = (e.clientY - lastMouseRef.current.y) * 0.006;
+    const deltaX = (e.clientX - lastMouseRef.current.x) * 0.007;
+    const deltaY = (e.clientY - lastMouseRef.current.y) * 0.007;
 
     rotationRef.current = {
       x: Math.max(-1.2, Math.min(1.2, rotationRef.current.x + deltaY)),
@@ -92,9 +92,9 @@ export const Globe3D: React.FC = () => {
 
       ctx.clearRect(0, 0, width, height);
 
-      // Smooth auto rotation
+      // Smooth continuous auto rotation
       if (autoRotateRef.current) {
-        rotationRef.current.y += 0.003;
+        rotationRef.current.y += 0.0035;
       }
 
       particleOffset = (particleOffset + 0.012) % 1;
@@ -107,7 +107,7 @@ export const Globe3D: React.FC = () => {
         radius * 0.95, 
         centerX, 
         centerY, 
-        radius * 1.3
+        radius * 1.35
       );
       atmosphereGlow.addColorStop(0, 'rgba(56, 189, 248, 0.45)');
       atmosphereGlow.addColorStop(0.3, 'rgba(14, 165, 233, 0.22)');
@@ -116,54 +116,55 @@ export const Globe3D: React.FC = () => {
 
       ctx.fillStyle = atmosphereGlow;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, radius * 1.3, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, radius * 1.35, 0, Math.PI * 2);
       ctx.fill();
 
-      // 2. Render Realistic Earth Surface (Image with 3D Spherical Shading & Rotation)
+      // 2. Realistic Rotating Earth Surface Inside 3D Sphere Mask
       ctx.save();
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.clip();
 
       if (earthImgRef.current && earthImgRef.current.complete) {
-        // Compute horizontal rotational pan for the realistic Earth texture
         const earthImg = earthImgRef.current;
-        const imgSize = radius * 2;
+        const imgWidth = radius * 4.2;
+        const imgHeight = radius * 2.1;
         
+        // Continuous horizontal rotation mapping
+        const normRotation = ((currentRot.y / (Math.PI * 2)) % 1 + 1) % 1;
+        const panX = -normRotation * imgWidth;
+        const panY = -radius * 1.05 + currentRot.x * 25; // pitch tilt
+
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(currentRot.x * 0.2); // subtle tilt
-        
-        // Draw the photorealistic Earth globe
-        ctx.drawImage(
-          earthImg,
-          -radius,
-          -radius,
-          imgSize,
-          imgSize
-        );
+
+        // Draw multiple seamless tiles of world map to rotate endlessly
+        ctx.drawImage(earthImg, panX - imgWidth, panY, imgWidth, imgHeight);
+        ctx.drawImage(earthImg, panX, panY, imgWidth, imgHeight);
+        ctx.drawImage(earthImg, panX + imgWidth, panY, imgWidth, imgHeight);
+        ctx.drawImage(earthImg, panX + imgWidth * 2, panY, imgWidth, imgHeight);
         ctx.restore();
 
-        // Overlay 3D Spherical Lighting & Terminator Shadow
+        // 3D Spherical Curvature & Lighting Gradient
         const lightGrad = ctx.createRadialGradient(
           centerX - radius * 0.35,
           centerY - radius * 0.35,
           radius * 0.15,
           centerX + radius * 0.2,
           centerY + radius * 0.2,
-          radius * 1.05
+          radius * 1.08
         );
-        lightGrad.addColorStop(0, 'rgba(255, 255, 255, 0.15)'); // sun highlight
+        lightGrad.addColorStop(0, 'rgba(255, 255, 255, 0.2)'); // solar highlight
         lightGrad.addColorStop(0.45, 'rgba(0, 0, 0, 0)');
-        lightGrad.addColorStop(0.75, 'rgba(2, 6, 23, 0.4)');
-        lightGrad.addColorStop(1, 'rgba(2, 6, 23, 0.85)'); // night shadow
+        lightGrad.addColorStop(0.75, 'rgba(2, 6, 23, 0.45)');
+        lightGrad.addColorStop(1, 'rgba(2, 6, 23, 0.9)'); // night terminator shadow
 
         ctx.fillStyle = lightGrad;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Inner blue atmospheric limb ring
+        // Atmospheric Blue Limb Gradient
         const innerAtmosphere = ctx.createRadialGradient(
           centerX,
           centerY,
@@ -173,15 +174,14 @@ export const Globe3D: React.FC = () => {
           radius
         );
         innerAtmosphere.addColorStop(0, 'rgba(56, 189, 248, 0)');
-        innerAtmosphere.addColorStop(0.8, 'rgba(56, 189, 248, 0.2)');
-        innerAtmosphere.addColorStop(1, 'rgba(56, 189, 248, 0.55)');
+        innerAtmosphere.addColorStop(0.8, 'rgba(56, 189, 248, 0.25)');
+        innerAtmosphere.addColorStop(1, 'rgba(56, 189, 248, 0.65)');
         ctx.fillStyle = innerAtmosphere;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // Fallback procedural planet sphere if image loading
-        const sphereGrad = ctx.createRadialGradient(
+        const fallbackGrad = ctx.createRadialGradient(
           centerX - radius * 0.35,
           centerY - radius * 0.35,
           radius * 0.1,
@@ -189,11 +189,10 @@ export const Globe3D: React.FC = () => {
           centerY,
           radius
         );
-        sphereGrad.addColorStop(0, '#0284c7');
-        sphereGrad.addColorStop(0.4, '#0369a1');
-        sphereGrad.addColorStop(0.8, '#0f172a');
-        sphereGrad.addColorStop(1, '#020617');
-        ctx.fillStyle = sphereGrad;
+        fallbackGrad.addColorStop(0, '#0284c7');
+        fallbackGrad.addColorStop(0.5, '#0369a1');
+        fallbackGrad.addColorStop(1, '#020617');
+        ctx.fillStyle = fallbackGrad;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.fill();
@@ -203,14 +202,14 @@ export const Globe3D: React.FC = () => {
       // Outer Glowing Limb Border
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
       ctx.lineWidth = 1.5;
       ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 8;
+      ctx.shadowBlur = 10;
       ctx.stroke();
       ctx.shadowBlur = 0;
 
-      // 3. 3D Coordinate Mapping Projection
+      // 3. 3D Coordinate Projection Helper (Synchronized with Earth surface)
       const project = (latDeg: number, lngDeg: number) => {
         const phi = (90 - latDeg) * (Math.PI / 180);
         const theta = (lngDeg + 180) * (Math.PI / 180) + currentRot.y;
@@ -232,29 +231,7 @@ export const Globe3D: React.FC = () => {
         };
       };
 
-      // 4. Subtle Latitude & Longitude Telemetry Grid
-      ctx.lineWidth = 0.6;
-      for (let lat = -60; lat <= 60; lat += 30) {
-        ctx.beginPath();
-        let first = true;
-        for (let lng = -180; lng <= 180; lng += 10) {
-          const pt = project(lat, lng);
-          if (pt.visible) {
-            ctx.strokeStyle = `rgba(56, 189, 248, ${Math.max(0.03, pt.depth * 0.12)})`;
-            if (first) {
-              ctx.moveTo(pt.x, pt.y);
-              first = false;
-            } else {
-              ctx.lineTo(pt.x, pt.y);
-            }
-          } else {
-            first = true;
-          }
-        }
-        ctx.stroke();
-      }
-
-      // 5. Draw 3D Carbon Arc Trajectories (Origin to EU Rotterdam)
+      // 4. Draw 3D Carbon Arc Trajectories (Origin to EU Rotterdam)
       const euPt = project(51.9, 4.5);
 
       TRADE_NODES.slice(0, 4).forEach((supplier) => {
@@ -265,7 +242,7 @@ export const Globe3D: React.FC = () => {
           const midY = Math.min(supPt.y, euPt.y) - radius * 0.28;
 
           ctx.beginPath();
-          ctx.strokeStyle = `${supplier.color}50`;
+          ctx.strokeStyle = `${supplier.color}55`;
           ctx.lineWidth = 1.4;
           ctx.setLineDash([4, 4]);
           ctx.moveTo(supPt.x, supPt.y);
@@ -273,7 +250,7 @@ export const Globe3D: React.FC = () => {
           ctx.stroke();
           ctx.setLineDash([]);
 
-          // Animated moving telemetry particle
+          // Animated moving particle
           const t = (particleOffset + supplier.emissions * 0.2) % 1;
           const px = (1 - t) * (1 - t) * supPt.x + 2 * (1 - t) * t * midX + t * t * euPt.x;
           const py = (1 - t) * (1 - t) * supPt.y + 2 * (1 - t) * t * midY + t * t * euPt.y;
@@ -288,14 +265,14 @@ export const Globe3D: React.FC = () => {
         }
       });
 
-      // 6. Draw Interactive Trading Nodes & Pulsing Badges
+      // 5. Draw Interactive Trading Nodes & Pulsing Badges
       TRADE_NODES.forEach((node) => {
         const pt = project(node.lat, node.lng);
         if (pt.visible) {
           const isSelected = selectedNodeRef.current.name === node.name;
           const nodeRadius = isSelected ? 7 : 5;
 
-          // Pulsing outer ring
+          // Outer pulse ring
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, nodeRadius * 2, 0, Math.PI * 2);
           ctx.strokeStyle = `${node.color}60`;
@@ -311,11 +288,10 @@ export const Globe3D: React.FC = () => {
           ctx.fill();
           ctx.shadowBlur = 0;
 
-          // Label
+          // Country Label
           if (isSelected || pt.depth > 0.35) {
             ctx.font = 'bold 11px "JetBrains Mono", monospace';
             ctx.fillStyle = '#030712';
-            // Text shadow background
             ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
             ctx.shadowBlur = 4;
             ctx.fillText(`${node.country}`, pt.x + 9, pt.y - 3);
