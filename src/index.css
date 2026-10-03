@@ -1,0 +1,179 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-main: #06090e;
+    --bg-surface: #0c1219;
+    --bg-subtle: #111823;
+    --bg-panel: #16202e;
+    --border-subtle: #1e293b;
+    --border-strong: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-emerald: #10b981;
+    --accent-cyan: #38bdf8;
+    --accent-amber: #f59e0b;
+    --status-verified-text: #34d399;
+    --status-verified-bg: rgba(16, 185, 129, 0.15);
+    --status-verified-border: rgba(16, 185, 129, 0.4);
+    --status-warning-text: #fbbf24;
+    --status-warning-bg: rgba(245, 158, 11, 0.15);
+    --status-warning-border: rgba(245, 158, 11, 0.4);
+    --status-error-text: #f87171;
+    --status-error-bg: rgba(239, 68, 68, 0.15);
+    --status-error-border: rgba(239, 68, 68, 0.4);
+  }
+
+  /* Studio Slate (Light 3D) mode when data-theme="studio" */
+  :root[data-theme="studio"] {
+    --bg-main: #f5f6f8;
+    --bg-surface: #ffffff;
+    --bg-subtle: #edf0f4;
+    --bg-panel: #e2e8f0;
+    --border-subtle: #dbe2ea;
+    --border-strong: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --accent-emerald: #059669;
+    --accent-cyan: #0284c7;
+    --accent-amber: #d97706;
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  code, kbd, samp, pre {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+/* 3D Transform Utilities */
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.perspective-800 {
+  perspective: 800px;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.perspective-1500 {
+  perspective: 1500px;
+}
+
+/* 3D Glassmorphism & Depth Shadows */
+.glass-3d {
+  background: rgba(12, 18, 25, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.glass-3d-light {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), inset 0 1px 0 #ffffff;
+}
+
+/* 3D Isometric Block Effect */
+.iso-block {
+  transform: rotateX(15deg) rotateY(-15deg);
+  transition: transform 0.25s ease-out, box-shadow 0.25s ease-out;
+}
+.iso-block:hover {
+  transform: rotateX(8deg) rotateY(-8deg) translateZ(10px);
+  box-shadow: 0 25px 40px -10px rgba(16, 185, 129, 0.3);
+}
+
+/* Custom Cyber 3D Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090d14;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Pulse Glow & Hologram Animations */
+@keyframes hologram-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0.5deg);
+  }
+}
+
+@keyframes spin-slow-3d {
+  from {
+    transform: rotateX(20deg) rotateY(0deg);
+  }
+  to {
+    transform: rotateX(20deg) rotateY(360deg);
+  }
+}
+
+.animate-float-3d {
+  animation: hologram-float 4s ease-in-out infinite;
+}
+
+.animate-spin-3d {
+  animation: spin-slow-3d 20s linear infinite;
+}
+
+/* Source Pulse */
+@keyframes sourcePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.source-highlight-active {
+  animation: sourcePulse 2s infinite ease-in-out;
+  outline: 2px solid #10b981 !important;
+}
+
+/* Hide Spline watermark */
+#spline-watermark,
+a[href*="spline.design"],
+canvas + a,
+[class*="spline-watermark"],
+[aria-label*="spline" i] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+}
