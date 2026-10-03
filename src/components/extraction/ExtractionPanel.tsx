@@ -121,9 +121,9 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="font-mono text-[10px] text-[#5a6065] flex items-center gap-0.5">
-                      <MapPin className="w-2.5 h-2.5 text-[#848a90]" />
-                      Page {field.boundingBox.page} · x={field.boundingBox.x} · y={field.boundingBox.y}
+                    <span className="font-mono text-[10px] text-[#5a6065] flex items-center gap-1 bg-[#f0f0eb] px-1.5 py-0.5 rounded border border-[#e0e0d8]">
+                      <MapPin className="w-2.5 h-2.5 text-[var(--cyber-cyan)]" />
+                      Vakh Coords: P.{field.pdfPage ?? field.boundingBox.page} (Top: {field.highlightBox?.top ?? field.boundingBox.y}px, Left: {field.highlightBox?.left ?? field.boundingBox.x}px)
                     </span>
                     <span className="text-[10px] font-mono text-[#5a6065]">
                       Confidence: {Math.round(field.confidence * 100)}%
@@ -151,7 +151,7 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
                   </div>
                   <div>
                     <label htmlFor={`edit-notes-${field.id}`} className="text-[11px] text-[#5a6065] font-medium block mb-1">
-                      Compliance Audit Justification:
+                      Compliance Audit Justification (Synced with Vakh Space):
                     </label>
                     <input
                       id={`edit-notes-${field.id}`}
@@ -177,7 +177,7 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
                       className="px-2.5 py-1 rounded-[4px] bg-[#191c1e] text-white text-xs font-medium hover:bg-[#2d3134]"
                     >
                       <Save className="w-3 h-3 inline mr-1" />
-                      Save Correction
+                      Save & Sync to Vakh
                     </button>
                   </div>
                 </div>
@@ -187,14 +187,24 @@ export const ExtractionPanel: React.FC<ExtractionPanelProps> = ({
                     {field.value}
                   </div>
 
-                  {/* Actions: Confirm, Edit, Reject */}
+                  {/* Actions: Trace Source, Confirm, Edit */}
                   <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectField && onSelectField(field.fieldKey)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[4px] text-xs font-medium bg-[#f0f4f8] text-[#1b4368] border border-[#cbd9e7] hover:bg-[#e1ecf7] transition-colors"
+                      title="Trace source coordinates from Vakh payload"
+                    >
+                      <Sparkles className="w-3 h-3 text-[var(--cyber-cyan)]" />
+                      Trace Source
+                    </button>
+
                     {field.status !== 'human_confirmed' ? (
                       <button
                         type="button"
                         onClick={() => onConfirmField(field.id)}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[4px] text-xs font-medium bg-[#ecf7ef] text-[#1b6830] border border-[#c8e6ce] hover:bg-[#dff2e3] transition-colors"
-                        title="Sign off as verified input"
+                        title="Sign off as verified input and sync to Vakh"
                       >
                         <CheckCircle2 className="w-3 h-3" />
                         Confirm

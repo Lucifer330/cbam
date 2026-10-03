@@ -17,6 +17,7 @@ import {
   Sparkles,
   Lock
 } from 'lucide-react';
+import { VakhLiveBadge } from './VakhLiveBadge';
 
 interface AppShellProps {
   activeTab: string;
@@ -149,22 +150,25 @@ export const AppShell: React.FC<AppShellProps> = ({
               )}
             </button>
 
-            {/* Vakh Supplier Portal Button */}
-            <button
-              type="button"
-              onClick={() => onTabChange('vakh-portal')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-mono font-bold transition-all cursor-pointer ${
-                activeTab === 'vakh-portal'
-                  ? 'bg-[#10b981] text-[#022c22] shadow-[0_0_12px_rgba(16,185,129,0.5)]'
-                  : 'bg-[#1e293b]/70 text-[#cbd5e1] hover:bg-[#334155] border border-[#334155]'
-              }`}
-            >
-              <Globe className="w-3.5 h-3.5 text-[#34d399]" />
-              <span className="hidden sm:inline">Supplier Portal</span>
-              <span className="text-[9px] px-1 py-0.2 rounded font-mono font-bold bg-[#022c22] text-[#34d399] border border-[#10b981]/40">
-                VAKH
-              </span>
-            </button>
+              {/* Vakh Live Sync Badge */}
+              <VakhLiveBadge />
+
+              {/* Vakh Supplier Portal Button */}
+              <button
+                type="button"
+                onClick={() => onTabChange('vakh-portal')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-mono font-bold transition-all cursor-pointer ${
+                  activeTab === 'vakh-portal'
+                    ? 'bg-[#10b981] text-[#022c22] shadow-[0_0_12px_rgba(16,185,129,0.5)]'
+                    : 'bg-[#1e293b]/70 text-[#cbd5e1] hover:bg-[#334155] border border-[#334155]'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5 text-[#34d399]" />
+                <span className="hidden sm:inline">Supplier Portal</span>
+                <span className="text-[9px] px-1 py-0.2 rounded font-mono font-bold bg-[#022c22] text-[#34d399] border border-[#10b981]/40">
+                  VAKH
+                </span>
+              </button>
 
             {/* Quick Upload Action */}
             <button

@@ -259,16 +259,17 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
             </div>
           </div>
 
-          {/* INTERACTIVE BOUNDING BOX OVERLAYS (Simulating precise OCR coordinate detection) */}
+          {/* INTERACTIVE BOUNDING BOX OVERLAYS (Extracted directly from Vakh Item Schema Properties) */}
           {showOverlays && (
             <div className="absolute inset-0 pointer-events-none">
               {document.extractedFields.map((field) => {
                 const isSelected = highlightedFieldKey === field.fieldKey;
-                // Scale coordinates based on document container width (640px)
-                const top = field.boundingBox.y;
-                const left = field.boundingBox.x;
-                const width = field.boundingBox.width;
-                const height = field.boundingBox.height;
+                // Direct provenance coordinates extracted from Vakh Schema properties
+                const top = field.highlightBox?.top ?? field.boundingBox.y;
+                const left = field.highlightBox?.left ?? field.boundingBox.x;
+                const width = field.highlightBox?.width ?? field.boundingBox.width;
+                const height = field.highlightBox?.height ?? field.boundingBox.height;
+                const pageNum = field.pdfPage ?? field.boundingBox.page ?? 1;
 
                 return (
                   <div
@@ -283,17 +284,19 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                       width: `${width}px`,
                       height: `${height}px`,
                     }}
-                    className={`absolute pointer-events-auto cursor-pointer rounded-[3px] transition-all flex items-center justify-between px-1.5 text-[10px] font-mono select-none ${
+                    className={`absolute pointer-events-auto cursor-pointer rounded-[4px] transition-all flex items-center justify-between px-2 text-[10px] font-mono select-none ${
                       isSelected
-                        ? 'source-highlight-active bg-[#3d5042]/20 border-2 border-[#2c3d31] text-[#191c1e] z-20 shadow-md'
-                        : 'bg-[#3d5042]/10 border border-[#3d5042]/60 hover:bg-[#3d5042]/20 hover:border-[#3d5042] text-[#2c3d31] z-10'
+                        ? 'source-highlight-active bg-[var(--cyber-cyan)]/25 border-2 border-[var(--cyber-cyan)] text-black z-30 shadow-lg shadow-[var(--cyber-cyan)]/40 ring-4 ring-[var(--cyber-cyan)]/20 animate-pulse'
+                        : 'bg-[#3d5042]/15 border border-[#3d5042]/60 hover:bg-[var(--cyber-cyan)]/20 hover:border-[var(--cyber-cyan)] text-[#191c1e] z-10'
                     }`}
-                    title={`Source: Page ${field.boundingBox.page} · x=${field.boundingBox.x}, y=${field.boundingBox.y} (${field.label}: ${field.value})`}
+                    title={`Vakh Provenance: Page ${pageNum} · Top=${top}px, Left=${left}px, W=${width}px, H=${height}px (${field.label}: ${field.value})`}
                   >
                     <span className="truncate font-semibold">{field.label}</span>
-                    <span className="text-[9px] bg-white/80 px-1 rounded border border-[#3d5042]/30 shrink-0 ml-1">
-                      {Math.round(field.confidence * 100)}%
-                    </span>
+                    <div className="flex items-center gap-1 shrink-0 ml-1">
+                      <span className="text-[9px] bg-white/90 px-1 py-0.2 rounded border border-black/20 font-bold">
+                        {Math.round(field.confidence * 100)}%
+                      </span>
+                    </div>
                   </div>
                 );
               })}
@@ -302,19 +305,24 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
         </div>
       </div>
 
-      {/* Document Footer Bar */}
+      {/* Document Footer Bar with Vakh Single Source of Truth Provenance */}
       <div className="px-4 py-2 bg-[#fbfbfa] border-t border-[#e5e5de] flex flex-wrap items-center justify-between gap-2 text-xs text-[#5a6065]">
-        <div className="flex items-center gap-1.5 font-mono text-[11px]">
+        <div className="flex items-center gap-2 font-mono text-[11px]">
           <Hash className="w-3.5 h-3.5 text-[#848a90]" />
           <span>SHA-256: </span>
-          <span className="text-[#191c1e] truncate max-w-[220px]" title={document.sha256}>
+          <span className="text-[#191c1e] truncate max-w-[200px]" title={document.sha256}>
             {document.sha256}
           </span>
+          {document.vakhItemId && (
+            <span className="bg-emerald-500/10 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-500/20 text-[10px]">
+              Vakh: {document.vakhItemId}
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs text-[#3d5042]">
-          <MapPin className="w-3.5 h-3.5" />
-          <span>Click any highlighted region to verify field in the extraction panel</span>
+        <div className="flex items-center gap-1.5 text-xs text-[#3d5042] font-medium">
+          <MapPin className="w-3.5 h-3.5 text-[var(--cyber-cyan)]" />
+          <span>Click any Vakh coordinate region to audit & trace source</span>
         </div>
       </div>
     </div>

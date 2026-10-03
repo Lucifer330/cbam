@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { 
   CBAMDocument, 
   CalculationTrace, 
   AuditEvent, 
-  RuleVersion 
+  RuleVersion,
+  VakhAuditTag
 } from './types/cbam';
+import type { VakhSyncState, VakhSpacePayload, VakhBoardItem } from './types/vakh';
+import { vakhService, VakhDataEngine } from './services/vakhService';
 import { 
-  INITIAL_DOCUMENTS, 
   INITIAL_CALCULATIONS, 
   INITIAL_AUDIT_LOGS, 
   INITIAL_RULE_VERSIONS 
@@ -25,7 +27,7 @@ import { ProvenanceDrawer } from './components/common/ProvenanceDrawer';
 import { VakhSupplierPortalView } from './components/vakh/VakhSupplierPortalView';
 
 export function App() {
-  const [documents, setDocuments] = useState<CBAMDocument[]>(INITIAL_DOCUMENTS);
+  const [documents, setDocuments] = useState<CBAMDocument[]>([]);
   const [calculations, setCalculations] = useState<CalculationTrace[]>(INITIAL_CALCULATIONS);
   const [auditLogs, setAuditLogs] = useState<AuditEvent[]>(INITIAL_AUDIT_LOGS);
   const [ruleVersions, setRuleVersions] = useState<RuleVersion[]>(INITIAL_RULE_VERSIONS);
@@ -33,6 +35,10 @@ export function App() {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [selectedDocId, setSelectedDocId] = useState<string>('doc-001');
   const [focusedFieldKey, setFocusedFieldKey] = useState<string | null>(null);
+
+  // Vakh Live Sync State
+  const [vakhSyncState, setVakhSyncState] = useState<VakhSyncState>('connecting');
+  const [isVakhLoading, setIsVakhLoading] = useState<boolean>(true);
 
   // Global Provenance Drawer state
   const [drawerTrace, setDrawerTrace] = useState<CalculationTrace | null>(null);
@@ -46,13 +52,91 @@ export function App() {
     'https://prod.spline.design/rU-1iN643EB-IlsO/scene.splinecode'
   );
 
+  // Subscribe to live Vakh Data Engine stream
+  useEffect(() => {
+    setIsVakhLoading(true);
+
+    const unsubscribe = vakhService.subscribe((state: VakhSyncState, payload?: VakhSpacePayload) => {
+      setVakhSyncState(state);
+      if (payload && payload.items) {
+        const mappedDocs = payload.items.map((item) => VakhDataEngine.mapVakhItemToCBAMDocument(item));
+        setDocuments(mappedDocs);
+        if (mappedDocs.length > 0 && !selectedDocId) {
+          setSelectedDocId(mappedDocs[0].id);
+        }
+        setIsVakhLoading(false);
+      } else if (state === 'waiting' || state === 'error') {
+        setIsVakhLoading(false);
+      }
+    });
+
+    // Initial fetch from Vakh
+    vakhService.fetchLivePayload(300).catch(() => {
+      setIsVakhLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const activeRule = ruleVersions.find((r) => r.id === activeRuleId) || ruleVersions[0];
+  const awaitingCount = documents.filter((d) => (d.auditStatus || d.status) === 'Needs Review' || d.status === 'Needs verification').length;
 
-  const awaitingCount = documents.filter((d) => d.status === 'Needs verification').length;
+  // Add a new document from upload -> Ingest to Vakh Data Space
+  const handleDocumentAdded = async (newDoc: CBAMDocument) => {
+    const vakhItem: VakhBoardItem = {
+      id: `vakh_item_${newDoc.id}`,
+      boardId: vakhService.getConfig().boardId,
+      spaceId: vakhService.getConfig().spaceId,
+      title: `${newDoc.supplier} — ${newDoc.productName}`,
+      status: 'Needs Review',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      version: 1,
+      properties: {
+        documentId: newDoc.id,
+        filename: newDoc.filename,
+        fileSize: newDoc.fileSize,
+        sha256: newDoc.sha256,
+        supplier: newDoc.supplier,
+        supplierCountry: newDoc.supplierCountry,
+        importer: newDoc.importer,
+        productName: newDoc.productName,
+        cnCode: newDoc.cnCode,
+        goodsCategory: newDoc.goodsCategory,
+        documentType: newDoc.documentType,
+        installationName: newDoc.installationName,
+        installationCountry: newDoc.installationCountry,
+        productionRoute: newDoc.productionRoute,
+        traceabilityPercent: newDoc.traceabilityPercent,
+        auditStatus: 'Needs Review',
+        complianceStatus: 'Needs verification',
+        uploadedAt: 'Just now',
+        updatedAt: 'Just now',
+        extractedFields: newDoc.extractedFields.map((f) => ({
+          id: f.id,
+          fieldKey: f.fieldKey,
+          label: f.label,
+          value: f.value,
+          numericValue: f.numericValue,
+          unit: f.unit,
+          confidence: f.confidence,
+          status: f.status,
+          notes: f.notes,
+          provenance: {
+            pdfPage: f.pdfPage || f.boundingBox.page,
+            highlightBox: f.highlightBox || {
+              top: f.boundingBox.y,
+              left: f.boundingBox.x,
+              width: f.boundingBox.width,
+              height: f.boundingBox.height
+            },
+            confidenceScore: f.confidence
+          }
+        }))
+      }
+    };
 
-  // Add a new document from upload
-  const handleDocumentAdded = (newDoc: CBAMDocument) => {
-    setDocuments((prev) => [newDoc, ...prev]);
+    await vakhService.ingestVakhItem(vakhItem);
     setSelectedDocId(newDoc.id);
 
     // Add Audit Log
@@ -61,12 +145,12 @@ export function App() {
       timestamp: 'Just now',
       actor: 'E. Moreau',
       actorRole: 'Lead CBAM Officer',
-      action: 'Document uploaded & fingerprinted',
+      action: 'Document Ingested to Vakh Data Space',
       category: 'UPLOAD',
       source: newDoc.filename,
       status: 'CONFIRMED',
       hash: `SHA256: ${newDoc.sha256}`,
-      details: `Received ${newDoc.documentType} for ${newDoc.productName} (${newDoc.cnCode}). Generated SHA-256 fingerprint.`
+      details: `Ingested ${newDoc.documentType} into Vakh Board ${vakhService.getConfig().boardId}. Real-time coordinate bindings resolved.`
     };
     setAuditLogs((prev) => [newAudit, ...prev]);
 
@@ -75,8 +159,61 @@ export function App() {
   };
 
   // Add document submitted via Vakh Supplier Portal
-  const handleVakhDocumentAdded = (newDoc: CBAMDocument) => {
-    setDocuments((prev) => [newDoc, ...prev]);
+  const handleVakhDocumentAdded = async (newDoc: CBAMDocument) => {
+    const vakhItem: VakhBoardItem = {
+      id: `vakh_item_${newDoc.id}`,
+      boardId: vakhService.getConfig().boardId,
+      spaceId: vakhService.getConfig().spaceId,
+      title: `${newDoc.supplier} — ${newDoc.productName}`,
+      status: 'Needs Review',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      version: 1,
+      properties: {
+        documentId: newDoc.id,
+        filename: newDoc.filename,
+        fileSize: newDoc.fileSize,
+        sha256: newDoc.sha256,
+        supplier: newDoc.supplier,
+        supplierCountry: newDoc.supplierCountry,
+        importer: newDoc.importer,
+        productName: newDoc.productName,
+        cnCode: newDoc.cnCode,
+        goodsCategory: newDoc.goodsCategory,
+        documentType: newDoc.documentType,
+        installationName: newDoc.installationName,
+        installationCountry: newDoc.installationCountry,
+        productionRoute: newDoc.productionRoute,
+        traceabilityPercent: newDoc.traceabilityPercent,
+        auditStatus: 'Needs Review',
+        complianceStatus: 'Needs verification',
+        uploadedAt: 'Just now',
+        updatedAt: 'Just now',
+        extractedFields: newDoc.extractedFields.map((f) => ({
+          id: f.id,
+          fieldKey: f.fieldKey,
+          label: f.label,
+          value: f.value,
+          numericValue: f.numericValue,
+          unit: f.unit,
+          confidence: f.confidence,
+          status: f.status,
+          notes: f.notes,
+          provenance: {
+            pdfPage: f.pdfPage || f.boundingBox.page,
+            highlightBox: f.highlightBox || {
+              top: f.boundingBox.y,
+              left: f.boundingBox.x,
+              width: f.boundingBox.width,
+              height: f.boundingBox.height
+            },
+            confidenceScore: f.confidence
+          }
+        }))
+      }
+    };
+
+    await vakhService.ingestVakhItem(vakhItem);
     setSelectedDocId(newDoc.id);
 
     const newAudit: AuditEvent = {
@@ -89,13 +226,60 @@ export function App() {
       source: newDoc.filename,
       status: 'CONFIRMED',
       hash: `SHA256: ${newDoc.sha256}`,
-      details: `Received verified supplier self-declaration from ${newDoc.supplier} (${newDoc.supplierCountry}) via Vakh Form. Fingerprinted with SHA-256.`
+      details: `Received verified supplier self-declaration from ${newDoc.supplier} (${newDoc.supplierCountry}) via Vakh Form.`
     };
     setAuditLogs((prev) => [newAudit, ...prev]);
   };
 
-  // Confirm an extracted field
-  const handleConfirmField = (documentId: string, fieldId: string) => {
+  // Bi-directional Status Tag Handler: updates Vakh Board Listing in real-time
+  const handleUpdateAuditStatus = async (documentId: string, newStatus: VakhAuditTag, notes?: string) => {
+    // 1. Optimistic local update
+    setDocuments((prev) =>
+      prev.map((doc) => {
+        if (doc.id !== documentId) return doc;
+        const complianceStatus = 
+          newStatus === 'Verified' ? 'Verified' :
+          newStatus === 'Discrepancy' ? 'Flagged anomaly' : 'Needs verification';
+
+        return {
+          ...doc,
+          auditStatus: newStatus,
+          auditNotes: notes !== undefined ? notes : doc.auditNotes,
+          status: complianceStatus,
+          updatedAt: 'Just now (Synced with Vakh)'
+        };
+      })
+    );
+
+    // 2. Patch to Vakh API
+    try {
+      await vakhService.patchRecordStatus(documentId, newStatus, notes);
+    } catch (err) {
+      console.error('Failed to sync status to Vakh Space:', err);
+    }
+
+    // 3. Log Audit Trail
+    const doc = documents.find((d) => d.id === documentId);
+    if (doc) {
+      const audit: AuditEvent = {
+        id: `evt-${Date.now()}`,
+        timestamp: 'Just now',
+        actor: 'E. Moreau',
+        actorRole: 'Lead CBAM Officer (Auditor)',
+        action: `Auditor Tag: ${newStatus} (Synced to Vakh Space)`,
+        category: 'VERIFICATION',
+        source: `${doc.filename}`,
+        status: newStatus === 'Discrepancy' ? 'FLAGGED' : 'CONFIRMED',
+        hash: `VAKH-SYNC: 0x${Math.random().toString(16).slice(2, 10)}`,
+        details: `Patched Vakh Board status to "${newStatus}". Notes: ${notes || 'No notes added.'}`
+      };
+      setAuditLogs((prev) => [audit, ...prev]);
+    }
+  };
+
+  // Confirm an extracted field & Sync to Vakh
+  const handleConfirmField = async (documentId: string, fieldId: string) => {
+    // Optimistic local update
     setDocuments((prev) =>
       prev.map((doc) => {
         if (doc.id !== documentId) return doc;
@@ -117,11 +301,18 @@ export function App() {
           ...doc,
           extractedFields: updatedFields,
           status: allConfirmed ? ('Verified' as const) : doc.status,
+          auditStatus: allConfirmed ? ('Verified' as const) : doc.auditStatus,
           traceabilityPercent: Math.min(100, doc.traceabilityPercent + 15),
-          updatedAt: 'Just now'
+          updatedAt: 'Just now (Synced with Vakh)'
         };
       })
     );
+
+    // Bi-directional patch back to Vakh
+    await vakhService.patchFieldVerification(documentId, fieldId, {
+      status: 'human_confirmed',
+      verifiedBy: 'E. Moreau (Lead CBAM Officer)'
+    });
 
     // Audit log
     const doc = documents.find((d) => d.id === documentId);
@@ -132,19 +323,19 @@ export function App() {
         timestamp: 'Just now',
         actor: 'E. Moreau',
         actorRole: 'Lead CBAM Officer (Authorized Verifier)',
-        action: 'Human verification completed',
+        action: 'Field Verified & Patched to Vakh Space',
         category: 'VERIFICATION',
         source: `${doc.filename} · ${field.label}`,
         status: 'CONFIRMED',
         hash: `SIG: 0x${Math.random().toString(16).slice(2, 10)}`,
-        details: `Confirmed ${field.label} = ${field.value} against Page ${field.boundingBox.page} (x=${field.boundingBox.x}, y=${field.boundingBox.y}).`
+        details: `Confirmed ${field.label} = ${field.value} against Vakh coordinates (Page ${field.pdfPage || field.boundingBox.page}, Top ${field.highlightBox?.top || field.boundingBox.y}px).`
       };
       setAuditLogs((prev) => [audit, ...prev]);
     }
   };
 
-  // Edit an extracted field
-  const handleEditField = (documentId: string, fieldId: string, newValue: string, notes: string) => {
+  // Edit an extracted field & Sync to Vakh
+  const handleEditField = async (documentId: string, fieldId: string, newValue: string, notes: string) => {
     setDocuments((prev) =>
       prev.map((doc) => {
         if (doc.id !== documentId) return doc;
@@ -163,10 +354,18 @@ export function App() {
         return {
           ...doc,
           extractedFields: updatedFields,
-          updatedAt: 'Just now'
+          updatedAt: 'Just now (Synced with Vakh)'
         };
       })
     );
+
+    // Bi-directional patch back to Vakh
+    await vakhService.patchFieldVerification(documentId, fieldId, {
+      status: 'edited',
+      value: newValue,
+      notes: notes,
+      verifiedBy: 'E. Moreau (Lead CBAM Officer)'
+    });
 
     // Audit log
     const doc = documents.find((d) => d.id === documentId);
@@ -177,19 +376,19 @@ export function App() {
         timestamp: 'Just now',
         actor: 'E. Moreau',
         actorRole: 'Lead CBAM Officer',
-        action: 'Human corrected field value',
+        action: 'Human Correction Patched to Vakh Space',
         category: 'VERIFICATION',
         source: `${doc.filename} · ${field.label}`,
         status: 'CONFIRMED',
         hash: `SIG: 0x${Math.random().toString(16).slice(2, 10)}`,
-        details: `Auditor adjusted ${field.label} to "${newValue}". Audit note: ${notes || 'Manual correction.'}`
+        details: `Auditor adjusted ${field.label} to "${newValue}" and synchronized to Vakh Data Space. Note: ${notes || 'Manual correction.'}`
       };
       setAuditLogs((prev) => [audit, ...prev]);
     }
   };
 
-  // Reject a field
-  const handleRejectField = (documentId: string, fieldId: string) => {
+  // Reject a field & Sync to Vakh
+  const handleRejectField = async (documentId: string, fieldId: string) => {
     setDocuments((prev) =>
       prev.map((doc) => {
         if (doc.id !== documentId) return doc;
@@ -204,10 +403,17 @@ export function App() {
         return {
           ...doc,
           extractedFields: updatedFields,
-          status: 'Flagged anomaly' as const
+          status: 'Flagged anomaly' as const,
+          auditStatus: 'Discrepancy' as const
         };
       })
     );
+
+    await vakhService.patchFieldVerification(documentId, fieldId, {
+      status: 'rejected',
+      notes: 'Rejected by auditor'
+    });
+    await vakhService.patchRecordStatus(documentId, 'Discrepancy', 'Field rejected by compliance auditor');
   };
 
   // Run Deterministic Calculation Engine
@@ -259,10 +465,11 @@ export function App() {
 
     setCalculations((prev) => [newTrace, ...prev]);
 
-    // Mark doc calculated
+    // Mark doc calculated & patch to Vakh
     setDocuments((prev) =>
-      prev.map((d) => (d.id === documentId ? { ...d, status: 'Calculated' as const, traceabilityPercent: 100 } : d))
+      prev.map((d) => (d.id === documentId ? { ...d, status: 'Calculated' as const, auditStatus: 'Verified' as const, traceabilityPercent: 100 } : d))
     );
+    vakhService.patchRecordStatus(documentId, 'Verified', `Deterministic calculation executed: ${totalEmbedded.toLocaleString()} tCO2e`);
 
     // Audit logs
     const audit1: AuditEvent = {
@@ -283,7 +490,7 @@ export function App() {
       timestamp: 'Just now',
       actor: 'Deterministic Calculation Engine',
       actorRole: 'Rule Processor',
-      action: 'Calculation generated',
+      action: 'Calculation generated & Logged to Vakh',
       category: 'CALCULATION',
       source: doc.filename,
       status: 'SUCCESS',
@@ -349,7 +556,7 @@ export function App() {
         />
       )}
 
-      {/* 2 & 3. SPLIT DOCUMENT + EXTRACTION VIEW */}
+      {/* 2 & 3. SPLIT DOCUMENT + EXTRACTION VIEW (Strict Vakh Ingestion Enforced) */}
       {activeTab === 'split-view' && (
         <DocumentSplitView
           documents={documents}
@@ -360,7 +567,9 @@ export function App() {
           onEditField={handleEditField}
           onRejectField={handleRejectField}
           onRunCalculation={handleRunCalculation}
+          onUpdateAuditStatus={handleUpdateAuditStatus}
           initialFocusedFieldKey={focusedFieldKey}
+          isVakhLoading={isVakhLoading}
         />
       )}
 

@@ -7,6 +7,8 @@ export type ComplianceStatus =
   | 'Flagged anomaly' 
   | 'Archived';
 
+export type VakhAuditTag = 'Verified' | 'Discrepancy' | 'Needs Review';
+
 export interface BoundingBox {
   page: number;
   x: number;
@@ -24,6 +26,15 @@ export interface ExtractedField {
   unit?: string;
   confidence: number; // e.g. 0.98
   boundingBox: BoundingBox;
+  /** Direct Vakh schema coordinate mapping */
+  pdfPage?: number;
+  highlightBox?: {
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  };
+  vakhPropertyId?: string;
   status: 'ai_proposed' | 'human_confirmed' | 'edited' | 'rejected';
   verifiedBy?: string;
   verifiedAt?: string;
@@ -33,6 +44,11 @@ export interface ExtractedField {
 
 export interface CBAMDocument {
   id: string;
+  vakhItemId?: string;
+  vakhBoardId?: string;
+  vakhSpaceId?: string;
+  auditStatus?: VakhAuditTag;
+  auditNotes?: string;
   filename: string;
   fileSize: string;
   sha256: string;
