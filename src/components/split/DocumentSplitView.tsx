@@ -23,7 +23,9 @@ import {
   Sparkles,
   Download,
   FileCheck,
-  Scale
+  Scale,
+  Zap,
+  RotateCcw
 } from 'lucide-react';
 
 interface DocumentSplitViewProps {
@@ -88,16 +90,15 @@ export const DocumentSplitView: React.FC<DocumentSplitViewProps> = ({
   const [auditNotesInput, setAuditNotesInput] = useState<string>(currentDoc.auditNotes || '');
   const [isPatchingStatus, setIsPatchingStatus] = useState<boolean>(false);
   const [isCertModalOpen, setIsCertModalOpen] = useState<boolean>(false);
-  const [leftTab, setLeftTab] = useState<'viewer' | 'discrepancies'>('viewer');
+  const [leftTab, setLeftTab] = useState<'metrics_and_audit' | 'discrepancies'>('metrics_and_audit');
 
   // Live Deterministic Mathematical Engine Evaluation
   const evaluation: DeterministicEvaluationResult = DeterministicCalculationEngine.evaluateDocument(currentDoc);
 
-  // Bi-directional status toggle handler
+  // Bi-directional status toggle handler: fires PATCH /api/metrics/:id to update Supabase in real-time
   const handleStatusToggle = async (newStatus: VakhAuditTag) => {
     setIsPatchingStatus(true);
     try {
-      // Fire immediate patch request back to Vakh Board API
       await vakhService.patchRecordStatus(currentDoc.id, newStatus, auditNotesInput);
       if (onUpdateAuditStatus) {
         onUpdateAuditStatus(currentDoc.id, newStatus, auditNotesInput);
@@ -107,6 +108,14 @@ export const DocumentSplitView: React.FC<DocumentSplitViewProps> = ({
     } finally {
       setIsPatchingStatus(false);
     }
+  };
+
+  // Instant Reset / Seed Demo Data
+  const handleLoadDemoData = () => {
+    vakhService.seedVakhSpace();
+    setTimeout(() => {
+      onSelectDocumentId(currentDoc.id);
+    }, 200);
   };
 
   return (
@@ -177,8 +186,18 @@ export const DocumentSplitView: React.FC<DocumentSplitViewProps> = ({
           })}
         </div>
 
-        {/* Right: Export Audit Certificate & Live Vakh Sync Visual Badge */}
-        <div className="flex items-center gap-3">
+        {/* Right: Quick Demo Seed, Export Audit Certificate & Live Vakh Sync Visual Badge */}
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleLoadDemoData}
+            className="px-2.5 py-1.5 rounded-lg bg-[var(--surface-sunken)] hover:bg-[var(--surface)] border border-[var(--border-subtle)] hover:border-[var(--cyber-cyan)]/50 text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-mono flex items-center gap-1 transition-all cursor-pointer"
+            title="Reload Pre-filled CBAM Demo Data into database"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span className="hidden sm:inline">Reload Demo</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setIsCertModalOpen(true)}
@@ -193,24 +212,24 @@ export const DocumentSplitView: React.FC<DocumentSplitViewProps> = ({
         </div>
       </div>
 
-      {/* Split-screen container: Left = Document Viewer & Discrepancy Panel, Right = Extraction Panel */}
+      {/* DUAL-PANE PROVENANCE VIEW: Left Pane = Audit Metrics & Extraction, Right Pane = Document Viewer */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
-        {/* Left Side: Document Viewer & Discrepancy Tabs (7 cols on lg) */}
-        <div className="lg:col-span-7 h-full flex flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] shadow-xl bg-[var(--surface)]">
-          {/* Sub-tab Switcher: Document vs Discrepancy Analysis */}
+        {/* LEFT PANE: Audit Metric Cards, Status Badges & Discrepancy Tool (5 cols on lg) */}
+        <div className="lg:col-span-5 h-full flex flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] shadow-xl bg-[var(--surface)]">
+          {/* Sub-tab Switcher: Metrics & Extraction vs Discrepancies */}
           <div className="px-4 py-2 bg-[var(--surface-sunken)] border-b border-[var(--border-subtle)] flex items-center justify-between text-xs font-mono">
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setLeftTab('viewer')}
+                onClick={() => setLeftTab('metrics_and_audit')}
                 className={`px-3 py-1 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ${
-                  leftTab === 'viewer'
+                  leftTab === 'metrics_and_audit'
                     ? 'bg-[var(--surface)] text-[var(--cyber-cyan)] border border-[var(--border-subtle)] font-bold'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Evidence PDF Viewer</span>
+                <Layers className="w-3.5 h-3.5" />
+                <span>Audit Metrics</span>
               </button>
 
               <button
@@ -225,29 +244,26 @@ export const DocumentSplitView: React.FC<DocumentSplitViewProps> = ({
                 }`}
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
-                <span>Discrepancy Audit ({evaluation.discrepancies.length})</span>
-                {evaluation.benchmarkDeviationPercent !== 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
-                    evaluation.benchmarkDeviationPercent > 0 ? 'bg-red-500/20 text-red-300' : 'bg-emerald-500/20 text-emerald-300'
-                  }`}>
-                    {evaluation.benchmarkDeviationPercent > 0 ? '+' : ''}{evaluation.benchmarkDeviationPercent}%
-                  </span>
-                )}
+                <span>Discrepancies ({evaluation.discrepancies.length})</span>
               </button>
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 text-[11px] text-[var(--text-muted)]">
-              <Scale className="w-3.5 h-3.5 text-emerald-400" />
-              <span>EU Benchmark: {evaluation.applicableBenchmark.benchmarkValue} {evaluation.applicableBenchmark.unit}</span>
-            </div>
+            <span className="text-[10px] text-emerald-400 font-mono">
+              EU Benchmark: {evaluation.applicableBenchmark.benchmarkValue} {evaluation.applicableBenchmark.unit}
+            </span>
           </div>
 
           <div className="flex-1 overflow-hidden">
-            {leftTab === 'viewer' ? (
-              <DocumentViewer
+            {leftTab === 'metrics_and_audit' ? (
+              <ExtractionPanel
                 document={currentDoc}
                 highlightedFieldKey={highlightedFieldKey}
+                onHoverField={(fieldKey) => setHighlightedFieldKey(fieldKey)}
                 onSelectField={(fieldKey) => setHighlightedFieldKey(fieldKey)}
+                onConfirmField={(fieldId) => onConfirmField(currentDoc.id, fieldId)}
+                onEditField={(fieldId, val, notes) => onEditField(currentDoc.id, fieldId, val, notes)}
+                onRejectField={(fieldId) => onRejectField(currentDoc.id, fieldId)}
+                onRunCalculation={onRunCalculation}
               />
             ) : (
               <div className="h-full overflow-y-auto p-4 space-y-4">
@@ -261,20 +277,12 @@ export const DocumentSplitView: React.FC<DocumentSplitViewProps> = ({
           </div>
         </div>
 
-        {/* Right Side: Extraction Panel (5 cols on lg) with Bi-Directional Sync */}
-        <div className="lg:col-span-5 h-full overflow-hidden rounded-xl border border-[var(--border-subtle)] shadow-xl bg-[var(--surface)]">
-          <ExtractionPanel
+        {/* RIGHT PANE: Embedded PDF Viewer with Interactive Glowing Neon Coordinate Overlays (7 cols on lg) */}
+        <div className="lg:col-span-7 h-full overflow-hidden rounded-xl border border-[var(--border-subtle)] shadow-xl bg-[var(--surface)]">
+          <DocumentViewer
             document={currentDoc}
             highlightedFieldKey={highlightedFieldKey}
-            onHoverField={(fieldKey) => setHighlightedFieldKey(fieldKey)}
-            onSelectField={(fieldKey) => {
-              setHighlightedFieldKey(fieldKey);
-              setLeftTab('viewer');
-            }}
-            onConfirmField={(fieldId) => onConfirmField(currentDoc.id, fieldId)}
-            onEditField={(fieldId, val, notes) => onEditField(currentDoc.id, fieldId, val, notes)}
-            onRejectField={(fieldId) => onRejectField(currentDoc.id, fieldId)}
-            onRunCalculation={onRunCalculation}
+            onSelectField={(fieldKey) => setHighlightedFieldKey(fieldKey)}
           />
         </div>
       </div>

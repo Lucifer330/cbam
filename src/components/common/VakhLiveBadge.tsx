@@ -35,7 +35,7 @@ export const VakhLiveBadge: React.FC<VakhLiveBadgeProps> = ({ className = '' }) 
           bg: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
           dot: 'bg-emerald-400 animate-pulse',
           icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />,
-          label: 'Synced with Vakh Data Space (Live)',
+          label: 'Powered by Vakh Data Space (Live Sync Active)',
           sub: `${payload?.totalRecords ?? 0} items active · ${lastSyncTime}`
         };
       case 'syncing':

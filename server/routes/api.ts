@@ -61,7 +61,7 @@ export async function handleApiRequest(
       const evaluation = evaluateCBAMMetrics(
         spaceId,
         space.goods_category,
-        space.production_route,
+        space.production_route || 'Electric Arc Furnace (EAF) + Scrap',
         rawMetrics.map((m) => ({
           id: m.id,
           metricKey: m.metric_key,
@@ -69,7 +69,7 @@ export async function handleApiRequest(
           metricValue: m.metric_value,
           numericValue: m.numeric_value,
           unit: m.unit,
-          confidence: m.confidence,
+          confidence: m.confidence ?? 0.95,
           highlightCoordinates: m.highlight_coordinates
         }))
       );
@@ -154,7 +154,7 @@ export async function handleApiRequest(
       const evaluation = evaluateCBAMMetrics(
         targetSpaceId,
         space.goods_category,
-        space.production_route,
+        space.production_route || 'Electric Arc Furnace (EAF) + Scrap',
         metrics.map((m) => ({
           id: m.id,
           metricKey: m.metric_key,
@@ -162,7 +162,7 @@ export async function handleApiRequest(
           metricValue: m.metric_value,
           numericValue: m.numeric_value,
           unit: m.unit,
-          confidence: m.confidence,
+          confidence: m.confidence ?? 0.95,
           highlightCoordinates: m.highlight_coordinates
         }))
       );
