@@ -12,8 +12,10 @@ import {
   List,
   Sparkles,
   ArrowRight,
-  Cpu
+  Cpu,
+  FileCheck
 } from 'lucide-react';
+import { AuditCertificateModal } from '../export/AuditCertificateModal';
 
 interface DocumentTableProps {
   documents: CBAMDocument[];
@@ -36,6 +38,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   const [sortField, setSortField] = useState<'uploadedAt' | 'traceabilityPercent' | 'supplier'>('uploadedAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [viewMode, setViewMode] = useState<'3d_cards' | 'table'>('3d_cards');
+  const [certModalDoc, setCertModalDoc] = useState<CBAMDocument | null>(null);
 
   const filteredDocs = documents
     .filter((doc) => {
@@ -295,10 +298,23 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                       e.stopPropagation();
                       onSelectDocument(doc);
                     }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--surface-sunken)] hover:bg-[var(--cyber-cyan)] hover:text-black border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)] transition-all"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[var(--surface-sunken)] hover:bg-[var(--cyber-cyan)] hover:text-black border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)] transition-all cursor-pointer"
                   >
                     <span>Inspect</span>
                     <ArrowRight className="w-3 h-3" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCertModalDoc(doc);
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[var(--cyber-cyan)]/15 text-[var(--cyber-cyan)] border border-[var(--cyber-cyan)]/30 hover:bg-[var(--cyber-cyan)]/25 text-xs font-medium transition-all cursor-pointer"
+                    title="Export Official EU Audit Certificate"
+                  >
+                    <FileCheck className="w-3 h-3" />
+                    <span>Cert</span>
                   </button>
 
                   {doc.status === 'Calculated' && onViewProvenance && (
@@ -426,17 +442,27 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                         <button
                           type="button"
                           onClick={() => onSelectDocument(doc)}
-                          className="px-2.5 py-1 rounded bg-[var(--surface-sunken)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)] hover:border-[var(--cyber-cyan)] hover:text-[var(--cyber-cyan)] transition-colors"
+                          className="px-2.5 py-1 rounded bg-[var(--surface-sunken)] border border-[var(--border-subtle)] text-xs font-medium text-[var(--text-primary)] hover:border-[var(--cyber-cyan)] hover:text-[var(--cyber-cyan)] transition-colors cursor-pointer"
                           title="Open in Split Document Viewer"
                         >
                           Inspect
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setCertModalDoc(doc)}
+                          className="px-2.5 py-1 rounded bg-[var(--cyber-cyan)]/15 border border-[var(--cyber-cyan)]/30 text-xs font-medium text-[var(--cyber-cyan)] hover:bg-[var(--cyber-cyan)]/25 transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Export Official EU Audit Certificate"
+                        >
+                          <FileCheck className="w-3 h-3" />
+                          <span>Cert</span>
                         </button>
 
                         {doc.status === 'Calculated' && onViewProvenance && (
                           <button
                             type="button"
                             onClick={() => onViewProvenance(doc.id)}
-                            className="px-2.5 py-1 rounded bg-[var(--cyber-emerald)]/15 border border-[var(--cyber-emerald)]/30 text-xs font-medium text-[var(--cyber-emerald)] hover:bg-[var(--cyber-emerald)]/25 transition-colors"
+                            className="px-2.5 py-1 rounded bg-[var(--cyber-emerald)]/15 border border-[var(--cyber-emerald)]/30 text-xs font-medium text-[var(--cyber-emerald)] hover:bg-[var(--cyber-emerald)]/25 transition-colors cursor-pointer"
                             title="View Deterministic Provenance"
                           >
                             Trace
@@ -450,6 +476,15 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             </table>
           </div>
         </div>
+      )}
+
+      {/* Audit Certificate Modal */}
+      {certModalDoc && (
+        <AuditCertificateModal
+          isOpen={!!certModalDoc}
+          onClose={() => setCertModalDoc(null)}
+          document={certModalDoc}
+        />
       )}
     </div>
   );

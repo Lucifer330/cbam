@@ -4,6 +4,8 @@ import { MetricStrip } from '../common/MetricStrip';
 import { StatusBadge } from '../common/StatusBadge';
 import { SplineHeroContainer } from '../common/SplineHeroContainer';
 import { Merkle3DCube } from '../common/Merkle3DCube';
+import { SeamlessInputSwitcher } from '../document/SeamlessInputSwitcher';
+import { vakhService } from '../../services/vakhService';
 import { 
   ShieldCheck, 
   Upload, 
@@ -97,6 +99,23 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         traceableCount={traceableCount}
         onMetricClick={onNavigateTab}
         onTraceClick={() => featuredCalculation && onTraceClick(featuredCalculation)}
+      />
+
+      {/* Seamless Input Switcher: Drag-and-Drop Dropzone & Pre-filled Demo Loader */}
+      <SeamlessInputSwitcher
+        onLoadPreFilledDemo={() => {
+          vakhService.seedVakhSpace();
+          setTimeout(() => {
+            if (documents.length > 0) {
+              onSelectDocument(documents[0]);
+            }
+            onNavigateTab('split-view');
+          }, 300);
+        }}
+        onDocumentUploaded={(newDoc) => {
+          onSelectDocument(newDoc);
+          onNavigateTab('split-view');
+        }}
       />
 
       {/* 3D Featured Provenance Spotlight with Spinning Merkle Cube */}
