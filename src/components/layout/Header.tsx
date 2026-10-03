@@ -31,9 +31,6 @@ export const Header: React.FC<HeaderProps> = ({
                   3D HUD
                 </span>
               </span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-purple-300 bg-purple-950/60 border border-purple-500/30 px-2 py-0.5 rounded-full">
-                Craftora Hackathon · Build with Vakh Track
-              </span>
             </div>
             <p className="text-[11px] text-[#94a3b8] font-mono">
               Trace every CBAM number back to its source

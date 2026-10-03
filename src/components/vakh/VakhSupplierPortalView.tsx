@@ -327,10 +327,6 @@ export const VakhSupplierPortalView: React.FC<VakhSupplierPortalViewProps> = ({
       <div className="rounded-lg p-6 bg-gradient-to-r from-[#191c1e] via-[#243329] to-[#1c2c20] text-white border border-[#3b4c3e] shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#3d5a44] text-[#c5e8cc] text-[11px] font-semibold tracking-wide uppercase">
-              <Sparkles className="w-3 h-3 text-[#a3e635]" />
-              Craftora Hackathon · Build with Vakh Track (₹5,000 Prize)
-            </div>
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
               <span>CBAM Supplier Connect</span>
               <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-white/10 text-[#d2f3d8] border border-white/15">
