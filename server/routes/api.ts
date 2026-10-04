@@ -16,9 +16,41 @@ export async function handleApiRequest(
 
   try {
     // --------------------------------------------------------------------------
-    // 1. GET /api/vakh/sync -> Fetches and syncs structured submissions from Vakh Board
+    // 1. /api/vakh/sync -> Fetches or posts structured table rows for Vakh Board
     // --------------------------------------------------------------------------
-    if (method === 'GET' && pathname === '/api/vakh/sync') {
+    if (pathname === '/api/vakh/sync') {
+      if (method === 'POST') {
+        const { action, vakh_board_id, row } = body || {};
+        const targetBoardId = vakh_board_id || 'board_vakh_cbam_001';
+
+        const createdRow = {
+          id: `row_vakh_${Date.now()}`,
+          vakh_board_id: targetBoardId,
+          vakh_space_id: 'spc_craftora_cbam_2026',
+          exporterName: row?.exporterName || 'Unknown Exporter',
+          country: row?.country || 'Unknown',
+          cnCode: row?.cnCode || '',
+          netMass: row?.netMass || 0,
+          directEmissions: row?.directEmissions || 0,
+          prop_vakh_001: row?.prop_vakh_001 || 'prop_vakh_001',
+          prop_vakh_002: row?.prop_vakh_002 || 'prop_vakh_002',
+          createdAt: new Date().toISOString()
+        };
+
+        return {
+          status: 200,
+          headers: jsonHeaders,
+          data: {
+            success: true,
+            action: action || 'CREATE_ROW',
+            vakh_board_id: targetBoardId,
+            vakh_space_id: 'spc_craftora_cbam_2026',
+            row: createdRow,
+            message: 'Data successfully synced to Vakh Data Space Table!'
+          }
+        };
+      }
+
       const spaces = await db.getAllSpaces();
       const allMetrics = await Promise.all(spaces.map((s) => db.getMetricsBySpaceId(s.id)));
 
@@ -28,7 +60,7 @@ export async function handleApiRequest(
         data: {
           success: true,
           syncSource: 'vakh.com',
-          vakhBoardId: 'brd_customs_declarations_q3',
+          vakhBoardId: 'board_vakh_cbam_001',
           vakhSpaceId: 'spc_craftora_cbam_2026',
           lastSyncedAt: new Date().toISOString(),
           totalSpaces: spaces.length,

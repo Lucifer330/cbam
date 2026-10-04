@@ -78,6 +78,20 @@ export function App() {
     return () => unsubscribe();
   }, []);
 
+  // Handle URL query routing for mode=vakh-portal
+  useEffect(() => {
+    const handleQueryRoute = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'vakh-portal') {
+        setActiveTab('vakh-portal');
+      }
+    };
+
+    handleQueryRoute();
+    window.addEventListener('popstate', handleQueryRoute);
+    return () => window.removeEventListener('popstate', handleQueryRoute);
+  }, []);
+
   const activeRule = ruleVersions.find((r) => r.id === activeRuleId) || ruleVersions[0];
   const awaitingCount = documents.filter((d) => (d.auditStatus || d.status) === 'Needs Review' || d.status === 'Needs verification').length;
 

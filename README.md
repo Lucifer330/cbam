@@ -15,8 +15,9 @@ CBAM-AuditTrace is an evidence-linked compliance platform designed for the Europ
 
 ## 🚀 Live Demo & Repository
 
+- **Live Demo App**: [https://craftora99009.netlify.app/](https://craftora99009.netlify.app/)
 - **GitHub Repository**: [https://github.com/Lucifer330/cbam](https://github.com/Lucifer330/cbam)
-- **Local Dev Server**: `http://localhost:5175/` (via `npm run dev`)
+- **Local Dev Server**: `http://localhost:5173/` (via `npm run dev`)
 - **API Test Suite**: `npm run test:api` (Automated E2E integration runner)
 
 ---
